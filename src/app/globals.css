@@ -1,0 +1,204 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Silkscreen:wght@400;700&family=Audiowide&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-deep: #01060b;
+  --card-bg: #030d18;
+  --lime-neon: #a3ff00;
+  --cyan-dark: #0088cc;
+  --cyan-bright: #00d8ff;
+}
+
+body {
+  background-color: var(--bg-deep);
+  color: #ffffff;
+  font-family: 'Share Tech Mono', monospace;
+  overflow-x: hidden;
+}
+
+.font-orbitron {
+  font-family: 'Audiowide', sans-serif;
+}
+
+/* ===== Fundo Cibernético (grid animado na diagonal) ===== */
+.cyber-bg {
+  background-color: var(--bg-deep);
+  background-image: 
+    linear-gradient(rgba(0, 216, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 216, 255, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: 0 0;
+  position: relative;
+  overflow: hidden;
+  animation: grid-drift 14s linear infinite;
+}
+
+@keyframes grid-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 220px 220px; }
+}
+
+.cyber-bg::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 216, 255, 0.03) 51%,
+    transparent 51%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+  z-index: 0;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* Ruído/texto hacker — reposicionado abaixo da barra de status */
+.hacker-noise {
+  position: absolute;
+  top: 46px;
+  right: 6px;
+  width: 140px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  line-height: 1.5;
+  letter-spacing: 1px;
+  color: rgba(0, 216, 255, 0.14);
+  text-align: right;
+  white-space: pre-line;
+  pointer-events: none;
+  z-index: 0;
+  transform: skewX(-6deg);
+}
+
+.hacker-noise span.hi {
+  color: rgba(163, 255, 0, 0.22);
+}
+
+/* ===== Bordas neon padrão ===== */
+.border-neon-cyan {
+  border: 1px solid rgba(0, 216, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0, 216, 255, 0.15), inset 0 0 10px rgba(0, 216, 255, 0.05);
+  position: relative;
+  z-index: 1;
+}
+
+.cyber-card-cut {
+  background: rgba(3, 13, 24, 0.92);
+  border: 1px solid rgba(0, 216, 255, 0.4);
+  clip-path: polygon(
+    12px 0, 100% 0, 
+    100% calc(100% - 12px), calc(100% - 12px) 100%, 
+    0 100%, 0 12px
+  );
+  box-shadow: inset 0 0 15px rgba(0, 136, 204, 0.15);
+}
+
+.font-pixel {
+  font-family: 'Silkscreen', monospace;
+}
+
+/* ===== Glitch de verdade (camadas duplicadas) ===== */
+.glitch-text {
+  position: relative;
+  display: inline-block;
+  color: #ffffff;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deep);
+  overflow: hidden;
+}
+
+.glitch-text::before {
+  left: 2px;
+  color: #00d8ff;
+  clip-path: inset(0 0 55% 0);
+  animation: glitch-top 4s infinite linear alternate-reverse;
+}
+
+.glitch-text::after {
+  left: -2px;
+  color: #a3ff00;
+  clip-path: inset(45% 0 0 0);
+  animation: glitch-bottom 3.2s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-top {
+  0%, 90% { transform: translate(0, 0); clip-path: inset(0 0 55% 0); }
+  92% { transform: translate(-3px, -1px); clip-path: inset(10% 0 40% 0); }
+  94% { transform: translate(3px, 1px); clip-path: inset(0 0 60% 0); }
+  96% { transform: translate(-2px, 0); clip-path: inset(5% 0 50% 0); }
+  100% { transform: translate(0, 0); clip-path: inset(0 0 55% 0); }
+}
+
+@keyframes glitch-bottom {
+  0%, 90% { transform: translate(0, 0); clip-path: inset(45% 0 0 0); }
+  91% { transform: translate(3px, 1px); clip-path: inset(50% 0 0 0); }
+  95% { transform: translate(-3px, -1px); clip-path: inset(40% 0 0 0); }
+  97% { transform: translate(2px, 0); clip-path: inset(55% 0 0 0); }
+  100% { transform: translate(0, 0); clip-path: inset(45% 0 0 0); }
+}
+
+/* Aura do dia selecionado no calendário */
+.glow-green-orb {
+  background: var(--lime-neon);
+  box-shadow: 0 0 10px var(--lime-neon), 0 0 20px rgba(163, 255, 0, 0.6), inset 0 0 8px rgba(0,0,0,0.3);
+}
+
+.glow-green-bar {
+  box-shadow: 0 0 8px var(--lime-neon), 0 0 4px var(--lime-neon);
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+/* ===== Utilitário de cantos HUD reutilizável (pode aplicar em qualquer card) ===== */
+.hud-frame {
+  position: relative;
+}
+.hud-frame::before,
+.hud-frame::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+.hud-frame::before {
+  top: -1px; left: -1px;
+  border-top: 2px solid rgba(0, 216, 255, 0.8);
+  border-left: 2px solid rgba(0, 216, 255, 0.8);
+}
+.hud-frame::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid rgba(0, 216, 255, 0.8);
+  border-right: 2px solid rgba(0, 216, 255, 0.8);
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+.animate-pulse-slow { animation: pulse-slow 2.4s ease-in-out infinite; }
