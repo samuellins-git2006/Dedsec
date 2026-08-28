@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Header from '../../../components/Header';
 import { supabase } from '../../../lib/supabaseClient';
-import { ChevronLeft, ChevronRight, Check, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Plus, Trash2, X, CalendarOff } from 'lucide-react';
 
 const MESES = [
   'JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO',
@@ -33,9 +33,10 @@ export default function TarefasPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [isWithoutDate, setIsWithoutDate] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
-   const fetchTasks = async () => {
+  const fetchTasks = async () => {
     setLoading(true);
     setLoadError(null);
     const { data, error } = await supabase.from('tasks').select('*').order('created_at');
@@ -47,8 +48,9 @@ export default function TarefasPage() {
     }
     const grouped = {};
     (data || []).forEach(t => {
-      if (!grouped[t.task_date]) grouped[t.task_date] = [];
-      grouped[t.task_date].push(t);
+      const key = t.task_date || 'unscheduled';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(t);
     });
     setTasksByDate(grouped);
     setLoading(false);
@@ -64,6 +66,7 @@ export default function TarefasPage() {
 
   const selectedKey = dateKey(viewYear, viewMonth, selectedDay);
   const dayTasks = tasksByDate[selectedKey] || [];
+  const unscheduledTasks = tasksByDate['unscheduled'] || [];
 
   const changeMonth = (delta) => {
     let m = viewMonth + delta;
@@ -76,37 +79,57 @@ export default function TarefasPage() {
   };
 
   const toggleTask = async (id, current) => {
-    setTasksByDate(prev => ({
-      ...prev,
-      [selectedKey]: prev[selectedKey].map(t => t.id === id ? { ...t, completed: !current } : t)
-    }));
+    setTasksByDate(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => {
+        next[k] = next[k].map(t => t.id === id ? { ...t, completed: !current } : t);
+      });
+      return next;
+    });
     const { error } = await supabase.from('tasks').update({ completed: !current }).eq('id', id);
     if (error) { console.error(error); fetchTasks(); }
   };
 
   const deleteTask = async (id) => {
-    setTasksByDate(prev => ({
-      ...prev,
-      [selectedKey]: prev[selectedKey].filter(t => t.id !== id)
-    }));
+    setTasksByDate(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => {
+        next[k] = next[k].filter(t => t.id !== id);
+      });
+      return next;
+    });
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) { console.error(error); fetchTasks(); }
   };
 
   const addTask = async () => {
     if (!newTitle.trim()) return;
+
+    const taskDateValue = isWithoutDate ? null : selectedKey;
+    const taskTimeValue = isWithoutDate ? '--:--' : (newTime || '--:--');
+
     const { data, error } = await supabase
       .from('tasks')
-      .insert({ task_date: selectedKey, title: newTitle.trim(), time: newTime || '--:--', completed: false })
+      .insert({
+        task_date: taskDateValue,
+        title: newTitle.trim(),
+        time: taskTimeValue,
+        completed: false
+      })
       .select()
       .single();
+
     if (error) { console.error(error); return; }
+
+    const targetKey = taskDateValue || 'unscheduled';
     setTasksByDate(prev => ({
       ...prev,
-      [selectedKey]: [...(prev[selectedKey] || []), data]
+      [targetKey]: [...(prev[targetKey] || []), data]
     }));
+
     setNewTitle('');
     setNewTime('');
+    setIsWithoutDate(false);
     setShowAddModal(false);
   };
 
@@ -130,7 +153,7 @@ export default function TarefasPage() {
     calendarDays.push({ day: calendarDays.length, currentMonth: false });
   }
 
-   if (loading) {
+  if (loading) {
     return (
       <div className="cyber-bg min-h-screen text-white px-4 pb-12">
         <Header />
@@ -157,11 +180,27 @@ export default function TarefasPage() {
 
       <h2 className="text-[#82ff00] font-bold text-sm tracking-widest my-3 font-orbitron">TAREFAS</h2>
 
+      {/* Calendário */}
       <div className="border-neon-cyan hud-frame rounded-xl p-3.5 bg-[#040c16]/90 backdrop-blur-md mb-5 relative overflow-hidden">
-        <div className="inline-block border border-[#00f0ff] px-2.5 py-0.5 rounded text-[10px] text-[#00f0ff] font-bold tracking-wider mb-3 bg-[#00f0ff]/10">
-          CALENDÁRIO
+        
+        {/* Cabeçalho do Card: Tag + Botão na Direita */}
+        <div className="flex justify-between items-center mb-4">
+          <div className="inline-block border border-[#00f0ff] px-2.5 py-0.5 rounded text-[10px] text-[#00f0ff] font-bold tracking-wider bg-[#00f0ff]/10">
+            CALENDÁRIO
+          </div>
+          
+          <button
+            onClick={() => {
+              setIsWithoutDate(false);
+              setShowAddModal(true);
+            }}
+            className="border border-[#00f0ff] text-[#00f0ff] hover:text-[#82ff00] hover:border-[#82ff00] px-3 py-1 rounded-md text-[11px] font-bold tracking-wider flex items-center gap-1 bg-[#040c16] shadow-[0_0_10px_rgba(0,240,255,0.3)] transition-all"
+          >
+            <Plus size={13} strokeWidth={2.5} /> NOVA TAREFA
+          </button>
         </div>
 
+        {/* Mês e Navegação */}
         <div className="flex justify-between items-center text-[#00f0ff] mb-4 px-2">
           <button onClick={() => changeMonth(-1)} className="hover:text-white"><ChevronLeft size={18} /></button>
           <span className="font-bold text-sm tracking-widest text-white font-orbitron">
@@ -170,10 +209,12 @@ export default function TarefasPage() {
           <button onClick={() => changeMonth(1)} className="hover:text-white"><ChevronRight size={18} /></button>
         </div>
 
+        {/* Dias da Semana */}
         <div className="grid grid-cols-7 text-center text-[10px] font-bold text-[#00f0ff] mb-3 tracking-wider">
           {DIAS_SEMANA.map(d => <span key={d}>{d}</span>)}
         </div>
 
+        {/* Grid do Calendário */}
         <div className="grid grid-cols-7 gap-y-2 text-center">
           {calendarDays.map((item, idx) => {
             const key = item.currentMonth ? dateKey(viewYear, viewMonth, item.day) : null;
@@ -212,6 +253,7 @@ export default function TarefasPage() {
         </div>
       </div>
 
+      {/* Progresso Geral */}
       <div className="mb-6">
         <div className="flex justify-between items-center text-[11px] font-bold mb-1.5 font-orbitron">
           <span className="text-[#82ff00] tracking-wider">PROGRESSO GERAL</span>
@@ -222,13 +264,67 @@ export default function TarefasPage() {
         </div>
       </div>
 
-      <h3 className="text-[#82ff00] text-xs font-bold tracking-wider mb-3 font-orbitron">
+      {/* Lista 1: Tarefas Sem Data Prevista */}
+      <div className="border-neon-cyan hud-frame rounded-xl p-3.5 bg-[#040c16]/90 backdrop-blur-md mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2">
+            <CalendarOff size={16} className="text-[#00f0ff]" />
+            <h3 className="text-[#00f0ff] text-xs font-bold tracking-wider font-orbitron uppercase">
+              TAREFAS SEM DATA PREVISTA
+            </h3>
+          </div>
+          <span className="text-[10px] bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 px-2 py-0.5 rounded font-mono font-bold">
+            {unscheduledTasks.length} PENDENTES
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {unscheduledTasks.length === 0 ? (
+            <p className="text-gray-500 text-xs font-mono text-center py-3">Nenhuma tarefa sem data registrada.</p>
+          ) : (
+            unscheduledTasks.map(task => (
+              <div
+                key={task.id}
+                className="border border-[#00f0ff]/30 rounded-lg p-2.5 bg-[#061422]/90 flex justify-between items-center transition-all hover:border-[#00f0ff]"
+              >
+                <div>
+                  <p className={`text-xs font-bold tracking-wide ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                    {task.title}
+                  </p>
+                  <span className="text-[9px] text-[#00f0ff]/70 font-mono">SEM DATA DEFINIDA</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button onClick={() => deleteTask(task.id)} className="text-gray-500 hover:text-red-400 transition-colors p-1">
+                    <Trash2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => toggleTask(task.id, task.completed)}
+                    className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                      task.completed
+                        ? 'bg-[#82ff00] border-[#82ff00] text-black shadow-[0_0_8px_#82ff00]'
+                        : 'border-[#00f0ff]/60 bg-transparent hover:border-[#00f0ff]'
+                    }`}
+                  >
+                    {task.completed && <Check size={14} strokeWidth={3.5} />}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Lista 2: Tarefas da Data Selecionada */}
+      <h3 className="text-[#82ff00] text-xs font-bold tracking-wider mb-3 font-orbitron uppercase">
         SUAS TAREFAS - {selectedDay} DE {MESES[viewMonth]}
       </h3>
 
-      <div className="space-y-3">
+      <div className="space-y-3 mb-6">
         {dayTasks.length === 0 && (
-          <p className="text-gray-500 text-xs font-mono text-center py-4">Nenhuma tarefa para este dia.</p>
+          <p className="text-gray-500 text-xs font-mono text-center py-4 border border-[#00f0ff]/10 rounded-lg bg-[#040c16]/40">
+            Nenhuma tarefa para este dia.
+          </p>
         )}
         {dayTasks.map(task => (
           <div
@@ -236,7 +332,9 @@ export default function TarefasPage() {
             className="border-neon-cyan rounded-lg p-3 bg-[#040c16]/95 flex justify-between items-center transition-all hover:border-[#00f0ff]"
           >
             <div>
-              <p className="text-xs font-bold text-white tracking-wide">{task.title}</p>
+              <p className={`text-xs font-bold tracking-wide ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                {task.title}
+              </p>
               <p className="text-[10px] text-gray-400 mt-1 font-mono">{task.time}</p>
             </div>
 
@@ -259,25 +357,20 @@ export default function TarefasPage() {
         ))}
       </div>
 
-      <div className="flex justify-end mt-5">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="border border-[#00f0ff] text-[#00f0ff] hover:text-[#82ff00] hover:border-[#82ff00] px-3.5 py-1.5 rounded-md text-xs font-bold tracking-wider flex items-center gap-1.5 bg-[#040c16] shadow-[0_0_10px_rgba(0,240,255,0.3)] transition-all"
-        >
-          <Plus size={14} strokeWidth={2.5} /> NOVA TAREFA
-        </button>
-      </div>
-
+      {/* Modal de Criação */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6">
           <div className="border-neon-cyan hud-frame rounded-xl p-5 bg-[#040c16] w-full max-w-sm relative">
             <button onClick={() => setShowAddModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-white">
               <X size={18} />
             </button>
+            
             <h3 className="text-[#82ff00] font-orbitron text-sm tracking-widest mb-4">NOVA TAREFA</h3>
+            
             <p className="text-[10px] text-gray-400 mb-3 font-mono">
-              {selectedDay} de {MESES[viewMonth]} de {viewYear}
+              {isWithoutDate ? 'Tarefa sem data prevista' : `${selectedDay} de ${MESES[viewMonth]} de ${viewYear}`}
             </p>
+
             <input
               type="text"
               placeholder="Título da tarefa"
@@ -285,12 +378,26 @@ export default function TarefasPage() {
               onChange={(e) => setNewTitle(e.target.value)}
               className="w-full bg-[#061422] border border-[#00f0ff]/40 rounded-md px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-[#00f0ff]"
             />
-            <input
-              type="time"
-              value={newTime}
-              onChange={(e) => setNewTime(e.target.value)}
-              className="w-full bg-[#061422] border border-[#00f0ff]/40 rounded-md px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-[#00f0ff]"
-            />
+
+            {!isWithoutDate && (
+              <input
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="w-full bg-[#061422] border border-[#00f0ff]/40 rounded-md px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-[#00f0ff]"
+              />
+            )}
+
+            <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isWithoutDate}
+                onChange={(e) => setIsWithoutDate(e.target.checked)}
+                className="accent-[#82ff00] w-4 h-4 rounded"
+              />
+              <span className="text-xs text-gray-300 font-mono">Sem data prevista</span>
+            </label>
+
             <button
               onClick={addTask}
               className="w-full bg-[#82ff00] text-black font-bold py-2 rounded-md text-xs tracking-wider hover:shadow-[0_0_15px_#82ff00] transition-all"
